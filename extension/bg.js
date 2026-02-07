@@ -2,20 +2,11 @@
 
 let ws=null;
 let hbTimer = null;
+const clientId = crypto.randomUUID();
 
 const PORTS=[
-  8765,8766,8767,8768,8769,
-  8770,8771,8772,8773,8774,
-  8775,8776,8777,8778,8779,
-  8780,8781,8782,8783,8784,
-  8785,8786,8787,8788,8789,
-  8790,8791,8792,8793,8794,
-  8795,8796,8797,8798,8799,
-  8800,8801,8802,8803,8804
+  8765,8766,8767,8768,8769
 ];
-
-function auto_wheel() {
-}
 
 function humanLikeScroll() {
 
@@ -47,7 +38,7 @@ function humanLikeScroll() {
   function smooth(dy, done) {
     const startY = window.scrollY;
     const target = startY + dy;
-    const dur = rand(400, 1400);
+    const dur = rand(200, 1400);
     const t0 = performance.now();
 
     function f(t) {
@@ -77,7 +68,7 @@ function humanLikeScroll() {
     const y = window.scrollY + window.innerHeight;
     const atBottom = y >= h - 5;
 
-    let dy = rand(200, 800);
+    let dy = rand(80, 800);
 
     if (Math.random() < 0.15) dy *= -1;
     if (atBottom) dy = -rand(300, 900);
@@ -182,7 +173,7 @@ function connect(i=0){
   try {
     ws=new WebSocket(`ws://127.0.0.1:${PORTS[i]}`);
   } catch(e){
-    setTimeout(()=>connect(i+1),500);
+    setTimeout(()=>connect(i+1),2000);
     return;
   }
 
@@ -190,12 +181,13 @@ function connect(i=0){
     openAndGetFBName().then(name=>{
       ws.send(JSON.stringify({
         type: "init",
+        client_id:clientId,
         fb_name: name
       }));
     }).catch(()=>{});
     hbTimer=setInterval(()=>{
       if(ws.readyState===1){
-        ws.send(JSON.stringify({type:"ping"}));
+        ws.send(JSON.stringify({type:"ping", client_id:clientId}));
       }
     },5000);
   };
@@ -218,7 +210,7 @@ function connect(i=0){
       });
     }
     if (msg.action === "scroll30") {
-      ws.send(JSON.stringify({type:"status", status:"auto"}));
+      ws.send(JSON.stringify({type:"status", status:"auto", client_id:clientId}));
       chrome.tabs.query({active:true,currentWindow:true},tabs=>{
         if(!tabs.length) return;
 
@@ -230,7 +222,7 @@ function connect(i=0){
     }
 
     if (msg.action === "stop_scroll") {
-      ws.send(JSON.stringify({type:"status", status:"stop"}));
+      ws.send(JSON.stringify({type:"status", status:"stop", client_id:clientId}));
       chrome.tabs.query({active:true,currentWindow:true},tabs=>{
         if(!tabs.length) return;
 
@@ -267,9 +259,8 @@ function connect(i=0){
     setTimeout(()=>connect(0),5000);
   };
 
-  ws.onerror=()=>{
-    try{ws.close()}catch{}
-  };
+  ws.onerror=()=>{ try{ws.close()}catch{} };
 }
 
 connect();
+

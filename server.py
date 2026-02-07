@@ -10,13 +10,13 @@ import ttkbootstrap as tb
 from ttkbootstrap.constants import *
 import websockets
 
-PORT_RANGE = range(8765, 8804)
+PORT_RANGE = range(8765, 8769)
 
 class App:
     def __init__(self, root: tb.Window):
         self.root = root
         self.root.title("Browser Controller")
-        self.root.geometry("700x700")
+        self.root.geometry("700x600")
 
         self.loop = asyncio.new_event_loop()
         threading.Thread(target=self.loop.run_forever, daemon=True).start()
@@ -24,9 +24,11 @@ class App:
         self.servers = {}
         self.clients = {}
         self.ports_name = {}
+        self.ports = {}
 
         self.build_ui()
         self.scan()
+        self.root.after(5000, self.refresh)
 
     def build_ui(self):
         frm = tb.Frame(self.root)
@@ -47,60 +49,82 @@ class App:
         self.list_view.column("state", width=150, anchor="center")
         self.list_view.pack(fill="both", expand=True)
 
-    def get_item_port(self, item):
+    def remove_client(self, client_id):
+        self.clients.pop(client_id, None)
+        self.ports.pop(client_id, None)
+        self.ports_name = {k: v for k, v in self.ports_name.items() if v != client_id}
+
+    def get_item_id(self, item):
         return self.ports_name.get(self.list_view.item(item, "values")[1])
 
     def selected_ports(self):
-        return [ self.get_item_port(i) for i in self.list_view.selection()]
+        return [ self.get_item_id(i) for i in self.list_view.selection()]
     
-    def set_status(self, port, status):
+    def get_item_target(self,item):
+        name = self.list_view.item(item,"values")[1]
+        return self.ports_name.get(name)
+
+    def selected_targets(self):
+        return [self.get_item_target(i) for i in self.list_view.selection()]
+
+    def set_status(self, client_id, status):
         for item in self.list_view.get_children():
-            if self.get_item_port(item) == port:
+            if self.get_item_id(item) == client_id:
                 self.list_view.item(item, values=(status, self.list_view.item(item, "values")[1]))
                 break
 
     def refresh(self):
-        pass
-        # for i in self.list_view.get_children():
-        #     self.list_view.delete(i)
-
-        # for p, conns in self.clients.items():
-        #     if conns:
-        #         self.list_view.insert("", "end", values=(str(p),))
+        for item in self.list_view.get_children():
+            client_id = self.get_item_id(item)
+            conns = self.ports_name.get(client_id)
+            if not conns:
+                self.list_view.delete(item)
+                self.remove_client(client_id)
 
     async def ws_handler(self, ws, port):
-        self.clients.setdefault(port, set()).add(ws)
+
+        client_id = None
+
         try:
             async for msg in ws:
                 data = json.loads(msg)
+
+                client_id = data.get("client_id", "")
                 if data.get("type") == "init":
-                    name = data.get("fb_name", "")
+                    name = data.get("fb_name","")
+
+                    if not client_id:
+                        continue
+
+                    self.clients[client_id] = ws
+
                     self.list_view.insert("", "end", values=("空闲", name))
-                    self.ports_name[name] = port
+                    self.ports_name[name] = client_id
+                    self.ports[client_id] = port
+
                 if data.get("type") == "status":
                     if data.get("status") == "auto":
-                        self.set_status(port, "活跃中")
+                        self.set_status(client_id,"活跃中")
+
                     if data.get("status") == "stop":
-                        self.set_status(port, "空闲")
-                    print(f"Port {port} status: {data}")
+                        self.set_status(client_id,"空闲")
+        except websockets.exceptions.ConnectionClosedError:
+            print("客户端断开连接")
+        except websockets.exceptions.InvalidMessage:
+            print("收到非法 WebSocket 请求")
         finally:
-            self.clients[port].discard(ws)
-            self.root.after(0, self.refresh)
+            if client_id and port in self.clients:
+                self.clients[port].pop(client_id,None)
+                self.ports.pop(client_id,None)
 
     async def start_server(self, port):
         if port in self.servers:
             return
         try:
-            server = await websockets.serve(
-                lambda ws: self.ws_handler(ws, port),
-                "127.0.0.1",
-                port,
-                ping_interval=20,
-                ping_timeout=20
-            )
+            server = await websockets.serve(lambda ws: self.ws_handler(ws, port), "127.0.0.1", port)
             self.servers[port] = server
-        except:
-            pass
+        except Exception as e:
+            print(f"启动端口 {port} 失败: {e}")
 
     def scan(self):
         for p in PORT_RANGE:
@@ -109,27 +133,27 @@ class App:
                 self.loop
             )
 
-    async def send(self, port, data):
-        if port not in self.clients:
-            return
-        msg = json.dumps(data)
-        await asyncio.gather(*[
-            c.send(msg) for c in list(self.clients[port])
-        ], return_exceptions=True)
+    async def send(self,port,client_id,data):
+        ws = self.clients.get(client_id)
+        if ws:
+            await ws.send(json.dumps(data))
 
     def scroll(self):
-        for p in self.selected_ports():
-            asyncio.run_coroutine_threadsafe(
-                self.send(p, {"action":"scroll30"}),
-                self.loop
-            )
-
+        for client_id in self.selected_targets():
+            port = self.ports.get(client_id)
+            if port is not None:
+                asyncio.run_coroutine_threadsafe(
+                    self.send(port,client_id,{"action":"scroll30"}),
+                    self.loop
+                )
     def stop_scroll(self):
-        for p in self.selected_ports():
-            asyncio.run_coroutine_threadsafe(
-                self.send(p, {"action":"stop_scroll"}),
-                self.loop
-            )
+        for client_id in self.selected_targets():
+            port = self.ports.get(client_id)
+            if port is not None:
+                asyncio.run_coroutine_threadsafe(
+                    self.send(port,client_id,{"action":"stop_scroll"}),
+                    self.loop
+                )
 
 
 def main():
