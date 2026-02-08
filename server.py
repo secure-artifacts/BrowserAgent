@@ -28,7 +28,7 @@ class App:
 
         self.build_ui()
         self.scan()
-        self.root.after(5000, self.refresh)
+        self.refresh()
 
     def build_ui(self):
         frm = tb.Frame(self.root)
@@ -56,6 +56,9 @@ class App:
 
     def get_item_id(self, item):
         return self.ports_name.get(self.list_view.item(item, "values")[1])
+    
+    def get_item_name(self,item):
+        return self.list_view.item(item,"values")[1]
 
     def selected_ports(self):
         return [ self.get_item_id(i) for i in self.list_view.selection()]
@@ -76,10 +79,11 @@ class App:
     def refresh(self):
         for item in self.list_view.get_children():
             client_id = self.get_item_id(item)
-            conns = self.ports_name.get(client_id)
+            conns = self.ports_name.get(self.get_item_name(item))
             if not conns:
                 self.list_view.delete(item)
                 self.remove_client(client_id)
+        # self.root.after(5000, self.refresh)
 
     async def ws_handler(self, ws, port):
 
@@ -92,12 +96,9 @@ class App:
                 client_id = data.get("client_id", "")
                 if data.get("type") == "init":
                     name = data.get("fb_name","")
-
-                    if not client_id:
+                    if not client_id or name in self.ports_name:
                         continue
-
                     self.clients[client_id] = ws
-
                     self.list_view.insert("", "end", values=("空闲", name))
                     self.ports_name[name] = client_id
                     self.ports[client_id] = port
@@ -113,9 +114,7 @@ class App:
         except websockets.exceptions.InvalidMessage:
             print("收到非法 WebSocket 请求")
         finally:
-            if client_id and port in self.clients:
-                self.clients[port].pop(client_id,None)
-                self.ports.pop(client_id,None)
+            pass
 
     async def start_server(self, port):
         if port in self.servers:

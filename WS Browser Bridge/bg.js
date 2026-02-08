@@ -259,8 +259,16 @@ function connect(i=0){
     setTimeout(()=>connect(0),5000);
   };
 
-  ws.onerror=()=>{ try{ws.close()}catch{} };
+  ws.onerror=()=>{
+    try{ws.close()}catch{}
+    ws=null;
+  };
 }
 
-connect();
+// connect();
 
+chrome.runtime.onMessage.addListener((msg)=>{
+  if(msg.cmd==="connect_py"){
+    connect();
+  }
+});
