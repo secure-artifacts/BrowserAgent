@@ -1,14 +1,57 @@
 <!doctype html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <style>
-    body{width:160px;height:80px;display:flex;align-items:center;justify-content:center}
-    button{width:120px;height:40px;font-size:16px}
-  </style>
+<meta charset="utf-8">
+<style>
+  body{
+    width:200px;
+    height:120px;
+    margin:0;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(135deg,#1e293b,#0f172a);
+    font-family:"Microsoft YaHei UI","Microsoft YaHei",Segoe UI,sans-serif;
+  }
+
+  button{
+    width:150px;
+    height:42px;
+    font-size:15px;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+    color:white;
+    background:linear-gradient(135deg,#3b82f6,#2563eb);
+    box-shadow:0 4px 10px rgba(0,0,0,.25);
+    transition:.2s;
+  }
+
+  button:hover{
+    transform:translateY(-2px);
+    box-shadow:0 6px 14px rgba(0,0,0,.35);
+    background:linear-gradient(135deg,#60a5fa,#3b82f6);
+  }
+
+  button:active{
+    transform:translateY(1px);
+    box-shadow:0 2px 6px rgba(0,0,0,.3);
+  }
+
+  #btn2{
+    background:linear-gradient(135deg,#22c55e,#16a34a);
+  }
+
+  #btn2:hover{
+    background:linear-gradient(135deg,#4ade80,#22c55e);
+  }
+</style>
 </head>
 <body>
   <button id="btn">连接</button>
+  <button id="btn2">自动活跃</button>
   <script src="popup.js"></script>
 </body>
 </html>

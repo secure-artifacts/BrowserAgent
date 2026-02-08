@@ -63,6 +63,10 @@ function humanLikeScroll() {
 
   function loop() {
     if (!ctrl.run) return;
+    if (document.hidden) {
+      ctrl.timer = setTimeout(loop, 4000);
+      return;
+    }
 
     const h = document.documentElement.scrollHeight;
     const y = window.scrollY + window.innerHeight;
@@ -78,8 +82,8 @@ function humanLikeScroll() {
 
       const delay =
         Math.random() < 0.2
-          ? rand(3000, 7000)
-          : rand(800, 2500);
+          ? rand(3000, 8000)
+          : rand(300, 2500);
 
       ctrl.timer = setTimeout(loop, delay);
     });
@@ -272,3 +276,17 @@ chrome.runtime.onMessage.addListener((msg)=>{
     connect();
   }
 });
+
+chrome.runtime.onMessage.addListener((msg)=>{
+  if(msg.cmd==="auto_active"){
+    chrome.tabs.query({active:true,currentWindow:true},tabs=>{
+      if(!tabs.length) return;
+
+      chrome.scripting.executeScript({
+        target:{tabId:tabs[0].id},
+        func: humanLikeScroll
+      });
+    });
+  }
+});
+
