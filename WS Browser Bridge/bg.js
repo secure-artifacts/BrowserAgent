@@ -170,7 +170,6 @@ function connect(i=0){
   if(ws && ws.readyState===1) return;
 
   if(i>=PORTS.length){
-    setTimeout(()=>connect(0),5000);
     return;
   }
 
@@ -259,8 +258,6 @@ function connect(i=0){
 
     // 清理连接
     ws=null;
-    // 延迟重连
-    setTimeout(()=>connect(0),5000);
   };
 
   ws.onerror=()=>{
@@ -289,4 +286,28 @@ chrome.runtime.onMessage.addListener((msg)=>{
     });
   }
 });
+// 监听URL参数自动触发
+chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
+  if (info.status !== "complete" || !tab.url) return;
+
+  try {
+    const url = new URL(tab.url);
+    //https://www.facebook.com/?fb_bridge_auto_extension
+    if (tab.url.includes("facebook.com") && url.searchParams.has("fb_bridge_auto_extension")) {
+      // 自动滚动
+      chrome.scripting.executeScript({
+        target: { tabId },
+        func: humanLikeScroll
+      });
+    }
+
+    //https://www.facebook.com/?fb_bridge_connect_extension
+    if (tab.url.includes("facebook.com") && url.searchParams.has("fb_bridge_connect_extension")) {
+      // 自动连接WS（可选）
+      connect();
+    }
+
+  } catch(e){}
+});
+
 
