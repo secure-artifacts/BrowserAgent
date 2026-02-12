@@ -45,23 +45,24 @@ async function pressKeyRandomPause(el,key,min=80,max=280){
 
 // ===== 模拟人类点击 =====
 function humanClick(el){
-  const r = el.getBoundingClientRect();
-  const x = r.left + r.width/2;
-  const y = r.top + r.height/2;
+  el.click();
+  // const r = el.getBoundingClientRect();
+  // const x = r.left + r.width/2;
+  // const y = r.top + r.height/2;
 
-  const opts = {
-    view: window,
-    bubbles: true,
-    cancelable: true,
-    clientX: x,
-    clientY: y
-  };
+  // const opts = {
+  //   view: window,
+  //   bubbles: true,
+  //   cancelable: true,
+  //   clientX: x,
+  //   clientY: y
+  // };
 
-  el.dispatchEvent(new PointerEvent("pointerdown", opts));
-  el.dispatchEvent(new MouseEvent("mousedown", opts));
-  el.dispatchEvent(new PointerEvent("pointerup", opts));
-  el.dispatchEvent(new MouseEvent("mouseup", opts));
-  el.dispatchEvent(new MouseEvent("click", opts));
+  // el.dispatchEvent(new PointerEvent("pointerdown", opts));
+  // el.dispatchEvent(new MouseEvent("mousedown", opts));
+  // el.dispatchEvent(new PointerEvent("pointerup", opts));
+  // el.dispatchEvent(new MouseEvent("mouseup", opts));
+  // el.dispatchEvent(new MouseEvent("click", opts));
 }
 
 
@@ -109,8 +110,7 @@ async function shareToStory(){
     }
   }
 
-  await sleep(rand(1600,3200));
-  console.warn('未找到即时动态按钮');
+  console.log('未找到即时动态按钮');
   return false;
 }
 
@@ -169,7 +169,7 @@ async function doLike(){
 
   await sleep(rand(800,2000));
   humanClick(btn);
-  await sleep(rand(1000,5000));
+  console.log("已点赞");
 }
 
 // ===== 评论 =====
@@ -209,6 +209,7 @@ async function doComment(){
 
   // 模拟发送
   await pressKeyRandomPause(input,"Enter");
+  console.log("已评论:", text);
   await sleep(rand(1300,2600));
 
   // 关闭评论框（找 X 号按钮）
@@ -226,6 +227,8 @@ async function doComment(){
     }
   }
 
+  // 找不到关闭按钮就按 Esc 吧
+  await pressKeyRandomPause(input,"Escape");
   return false;
 }
 
@@ -241,14 +244,18 @@ async function randomInteract(){
   const r=Math.random();
 
   // ===== 执行 =====
-  if(Math.random()<0.25)
+  if(Math.random()<0.1) {
     await doLike();
-
-  if(Math.random()<0.25)
+    await sleep(rand(2500, 8000)); // 分享后停顿
+  }
+  if(Math.random()<0.1) {
     await shareToStory();
-
-  if(Math.random()<0.25)
+    await sleep(rand(2500, 8000)); // 分享后停顿
+  }
+  if(Math.random()<0.1) {
     await doComment();
+    await sleep(rand(2500, 8000)); // 分享后停顿
+  }
 }
 
 
@@ -265,6 +272,9 @@ function humanLikeScroll() {
   const ctrl = {
     run: true,
     timer: null,
+    start_time: Date.now(),
+    scroll_count: 0,
+    stop_count: rand(30, 100),
     stop() {
       this.run = false;
       if (this.timer) {
@@ -303,9 +313,9 @@ function humanLikeScroll() {
     requestAnimationFrame(f);
   }
   async function maybeInteract(){
-    // if (Math.random() < 0.25) {
+    if (Math.random() < 0.15) {
       try { await randomInteract(); } catch(e){}
-    // }
+    }
   }
 
   function loop() {
@@ -327,10 +337,18 @@ function humanLikeScroll() {
     smooth(dy, async () => {
       if (!ctrl.run) return;
 
+      await sleep(rand(800, 1400));
       await maybeInteract();
 
       const delay = Math.random() < 0.2 ? rand(3000, 8000) : rand(300, 2500);
 
+      ctrl.scroll_count += 1;
+      if (ctrl.scroll_count >= ctrl.stop_count) {
+        // 每滚动10次，长停一下
+        await sleep(rand(5000, 25000));
+        ctrl.scroll_count = 0;
+        ctrl.stop_count = rand(30, 100);
+      }
       ctrl.timer = setTimeout(loop, delay);
     });
   }
@@ -396,11 +414,11 @@ var comments=[
 
 async function run(){
   // await doLike()
-  // await doComment();
-  await shareToStory();
+  await doComment();
+  // await shareToStory();
   console.log("done");
 }
 
-run();
+// run();
 
-// humanLikeScroll()
+humanLikeScroll()
