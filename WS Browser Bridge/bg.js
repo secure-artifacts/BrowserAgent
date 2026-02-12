@@ -8,92 +8,6 @@ const PORTS=[
   8765,8766,8767,8768,8769
 ];
 
-function humanLikeScroll() {
-
-  // 强制停止旧实例
-  if (window.__hsCtrl) {
-    window.__hsCtrl.run = false;
-    if (window.__hsCtrl.timer) {
-      clearTimeout(window.__hsCtrl.timer);
-    }
-  }
-
-  const rand = (a, b) => Math.random() * (b - a) + a;
-
-  const ctrl = {
-    run: true,
-    timer: null,
-    stop() {
-      this.run = false;
-      if (this.timer) {
-        clearTimeout(this.timer);
-        this.timer = null;
-      }
-      delete window.__hsCtrl;
-    }
-  };
-
-  window.__hsCtrl = ctrl;
-
-  function smooth(dy, done) {
-    const startY = window.scrollY;
-    const target = startY + dy;
-    const dur = rand(200, 1400);
-    const t0 = performance.now();
-
-    function f(t) {
-      if (!ctrl.run) return;
-
-      const p = Math.min((t - t0) / dur, 1);
-      const e = p < 0.5
-        ? 2 * p * p
-        : 1 - Math.pow(-2 * p + 2, 2) / 2;
-
-      window.scrollTo(0, startY + (target - startY) * e);
-
-      if (p < 1 && ctrl.run) {
-        requestAnimationFrame(f);
-      } else if (ctrl.run) {
-        done && done();
-      }
-    }
-
-    requestAnimationFrame(f);
-  }
-
-  function loop() {
-    if (!ctrl.run) return;
-    if (document.hidden) {
-      ctrl.timer = setTimeout(loop, 4000);
-      return;
-    }
-
-    const h = document.documentElement.scrollHeight;
-    const y = window.scrollY + window.innerHeight;
-    const atBottom = y >= h - 5;
-
-    let dy = rand(80, 800);
-
-    if (Math.random() < 0.15) dy *= -1;
-    if (atBottom) dy = -rand(300, 900);
-
-    smooth(dy, () => {
-      if (!ctrl.run) return;
-
-      const delay =
-        Math.random() < 0.2
-          ? rand(3000, 8000)
-          : rand(300, 2500);
-
-      ctrl.timer = setTimeout(loop, delay);
-    });
-  }
-
-  loop();
-  return ctrl;
-}
-
-
 async function openAndGetFBName() {
   const [tab] = await chrome.tabs.query({active:true, currentWindow:true});
 
@@ -219,7 +133,7 @@ function connect(i=0){
 
         chrome.scripting.executeScript({
           target:{tabId:tabs[0].id},
-          func: humanLikeScroll
+          files:["tools.js"]
         });
       });
     }
@@ -281,7 +195,7 @@ chrome.runtime.onMessage.addListener((msg)=>{
 
       chrome.scripting.executeScript({
         target:{tabId:tabs[0].id},
-        func: humanLikeScroll
+        files:["tools.js"]
       });
     });
   }
@@ -297,7 +211,7 @@ chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
       // 自动滚动
       chrome.scripting.executeScript({
         target: { tabId },
-        func: humanLikeScroll
+        files:["tools.js"]
       });
     }
 
