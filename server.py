@@ -15,7 +15,7 @@ PORT_RANGE = range(8765, 8769)
 class App:
     def __init__(self, root: tb.Window):
         self.root = root
-        self.root.title("Browser Controller")
+        self.root.title("FB账号活跃")
         self.root.geometry("700x700")
 
         self.loop = asyncio.new_event_loop()
@@ -101,23 +101,40 @@ class App:
                 self.list_view.item(item, values=(status, self.list_view.item(item, "values")[1]))
                 break
 
-    def refresh(self):
-        items = list(self.list_view.get_children())
+    def delete_by_name(self, fb_name: str):
+        client_id = self.ports_name.pop(fb_name, None)
+        if not client_id:
+            return
 
+        # 删数据
+        self.clients.pop(client_id, None)
+        self.ports.pop(client_id, None)
+
+        # 删UI
+        for item in self.list_view.get_children():
+            if self.get_item_name(item) == fb_name:
+                self.list_view.delete(item)
+                break
+
+    def refresh(self):
         dead_clients = []
 
-        for item in items:
+        # 检测关闭连接
+        for client_id, ws in list(self.clients.items()):
+            if ws.close_code is not None:
+                dead_clients.append(client_id)
+
+        # 移除失效客户端
+        for client_id in dead_clients:
+            self.remove_client(client_id)
+
+        # 清理UI孤儿项
+        for item in list(self.list_view.get_children()):
             name = self.get_item_name(item)
             client_id = self.ports_name.get(name)
 
-            if not client_id or client_id not in self.clients:
-                dead_clients.append((item, client_id))
-
-        for item, client_id in dead_clients:
-            self.list_view.delete(item)
-            if client_id:
-                self.remove_client(client_id)
-
+            if client_id not in self.clients:
+                self.list_view.delete(item)
 
     async def ws_handler(self, ws, port):
         client_id = None
@@ -128,8 +145,9 @@ class App:
                 client_id = data.get("client_id", "")
                 if data.get("type") == "init":
                     name = data.get("fb_name","")
-                    if not client_id or name in self.ports_name:
+                    if not client_id:
                         continue
+                    self.delete_by_name(name)
                     self.clients[client_id] = ws
                     self.list_view.insert("", "end", values=("空闲", name))
                     self.ports_name[name] = client_id
@@ -216,7 +234,6 @@ class App:
                     if self.get_item_id(item) == client_id:
                         self.list_view.delete(item)
                         break
-
 
 
 def main():
