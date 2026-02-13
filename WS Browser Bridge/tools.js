@@ -78,7 +78,7 @@ async function waitFor(sel,timeout=4000){
 
 // ===== 分享到快拍（无语言依赖）=====
 async function shareToStory(){
-
+  console.log('准备分享至即时动态...');
   // 找分享按钮
   const shareBtns = [...document.querySelectorAll('[data-ad-rendering-role="share_button"]')]
     .map(n => n.closest('[role="button"]'))
@@ -95,10 +95,7 @@ async function shareToStory(){
   // 找菜单里所有 role="button" 的 div
   const buttons = document.querySelectorAll('[role="button"]');
 
-  const keywords = [
-    '限時動態', // 繁体
-    '快拍',     // 简体
-  ];
+  const keywords = ['限時動態','快拍','Share to your story'];
 
   for (let btn of buttons) {
     const text = btn.innerText.trim();
@@ -116,43 +113,39 @@ async function shareToStory(){
 
 // ===== 点击“感兴趣”按钮（无语言依赖）=====
 async function clickInterestedCard(){
+  console.log("点击感兴趣卡片...");
+  // 多语言支持
+  const keywords = ['兴趣', '興趣', 'Interested'];
 
-  const cards=[
-    ...document.querySelectorAll('div')
-  ].filter(d=>{
-    // 卡片特征：里面有两个可点击按钮
-    const btns=d.querySelectorAll('[role="button"][tabindex="0"]');
-    return btns.length===2;
-  });
+  // 找所有 role="button" 元素
+  const buttons = [...document.querySelectorAll('[role="button"]')].filter(isVisible);
 
-  for(const card of cards){
+  for (const btn of buttons) {
+    // 1️⃣ aria-label
+    const label = btn.getAttribute('aria-label') || '';
+    if (keywords.some(kw => label.includes(kw))) {
+      humanClick(btn);
+      console.log('点击了有兴趣按钮 (aria-label)');
+      return true;
+    }
 
-    const btns=[
-      ...card.querySelectorAll(
-        '[role="button"][tabindex="0"]:not([aria-disabled="true"])'
-      )
-    ].filter(isVisible);
-
-    if(btns.length!==2) continue;
-
-    const r0=btns[0].getBoundingClientRect();
-    const r1=btns[1].getBoundingClientRect();
-
-    // 取更靠左的那个（= 感兴趣）
-    const target=r0.left<=r1.left ? btns[0] : btns[1];
-
-    await sleep(rand(300,800));
-    humanClick(target);
-    return true;
+    // 2️⃣ 内部文本
+    const text = (btn.innerText || '').trim();
+    if (keywords.some(kw => text.includes(kw))) {
+      humanClick(btn);
+      console.log('点击了有兴趣按钮 (text)');
+      return true;
+    }
   }
 
+  console.log('未找到有兴趣按钮');
   return false;
 }
 
 // ===== 点赞 =====
 async function doLike(){
-
-  const nodes=[
+  console.log("准备点赞...");
+    const nodes=[
     ...document.querySelectorAll(
       '[data-ad-rendering-role="like_button"]'
     )
@@ -174,7 +167,7 @@ async function doLike(){
 
 // ===== 评论 =====
 async function doComment(){
-
+  console.log("准备评论...");
   const btns = [
     ...document.querySelectorAll('[data-ad-rendering-role="comment_button"]')
   ]
@@ -233,17 +226,37 @@ async function doComment(){
 }
 
 
+async function doClear(){
+  const keywords = ["离开页面","離開頁面","退出頁面","Leave",
+    "關閉聊天室",
+    "关闭聊天",
+    "關閉聊天",
+    "Close chat",
+    "Close"
+  ];
+  const btns = [...document.querySelectorAll('[role="button"]')];
+
+  for(const b of btns){
+    if(!isVisible(b)) continue;
+
+    const label = b.getAttribute("aria-label") || "";
+    const text  = (b.innerText||"").trim();
+
+    if(keywords.some(k=>label.includes(k)||text.includes(k))){
+      humanClick(b);
+      await sleep(rand(800,1600));
+    }
+  }
+}
+
 // ===== 随机互动 =====
 async function randomInteract(){
   // 优先点击感兴趣卡片
   await clickInterestedCard();
 
-  // 总体低频控制
-  if(Math.random()<0.7) return;
+  if(Math.random()>0.618)
+    return;
 
-  const r=Math.random();
-
-  // ===== 执行 =====
   if(Math.random()<0.1) {
     await doLike();
     await sleep(rand(2500, 8000)); // 分享后停顿
@@ -256,6 +269,8 @@ async function randomInteract(){
     await doComment();
     await sleep(rand(2500, 8000)); // 分享后停顿
   }
+  // 最后清理弹窗
+  await doClear();
 }
 
 
@@ -313,8 +328,8 @@ function humanLikeScroll() {
     requestAnimationFrame(f);
   }
   async function maybeInteract(){
-    if (Math.random() < 0.15) {
-      try { await randomInteract(); } catch(e){}
+    if (Math.random() < 0.16) {
+      await randomInteract();
     }
   }
 
@@ -340,7 +355,7 @@ function humanLikeScroll() {
       await sleep(rand(800, 1400));
       await maybeInteract();
 
-      const delay = Math.random() < 0.2 ? rand(3000, 8000) : rand(300, 2500);
+      const delay = Math.random() < 0.1 ? rand(3000, 10000) : rand(300, 2500);
 
       ctrl.scroll_count += 1;
       if (ctrl.scroll_count >= ctrl.stop_count) {
@@ -357,65 +372,25 @@ function humanLikeScroll() {
   return ctrl;
 }
 
-var comments=[
-  "Nice 🙂",
-  "👍",
-  "Great post!",
-  "Love this",
-  "Awesome",
-  "🔥",
-  "So cool",
-  "Well said",
-  "Interesting!",
-  "Agree 👍",
-
-  "Great shot!",
-  "Looks good!",
-  "Well done!",
-  "Love it 😍",
-  "Cool 😎",
-  "Amazing work",
-  "Nicely done",
-  "Good vibes ✨",
-  "Really nice",
-  "Smart point",
-  "True!",
-  "Makes sense",
-  "Good one 👍",
-  "Haha nice",
-  "Beautiful",
-  "Solid post",
-  "Respect ✌️",
-  "Brilliant",
-  "Not bad 🙂",
-  "Very cool",
-  "Impressive",
-  "Clean 👌",
-  "Quality content",
-  "This is great",
-  "Big fan of this",
-  "On point 🎯",
-  "Exactly!",
-  "Couldn’t agree more",
-  "Love the idea",
-  "Creative!",
-  "Nice share",
-  "Appreciate this",
-  "Good energy",
-  "Super nice",
-  "Fresh take",
-  "Cool post",
-  "That’s cool",
-  "Great vibe",
-  "Love the vibe",
-  "Neat 👍"
+var comments = [
+  "Nice 🙂", "👍", "Great post!", "Love this", "Awesome", "🔥", "So cool",
+  "Well said", "Interesting!", "Agree 👍", "Great shot!", "Looks good!", "Well done!",
+  "Love it 😍", "Cool 😎", "Amazing work", "Nicely done", "Good vibes ✨", "Really nice",
+  "Smart point", "True!", "Makes sense", "Good one 👍", "Haha nice", "Beautiful",
+  "Solid post", "Respect ✌️", "Brilliant", "Not bad 🙂", "Very cool", "Impressive",
+  "Clean 👌", "Quality content", "This is great", "Big fan of this", "On point 🎯",
+  "Exactly!", "Couldn’t agree more", "Love the idea", "Creative!", "Nice share",
+  "Appreciate this", "Good energy", "Super nice", "Fresh take", "Cool post",
+  "That’s cool", "Great vibe", "Love the vibe", "Neat 👍"
 ];
 
 
 async function run(){
   // await doLike()
-  await doComment();
+  // await doComment();
   // await shareToStory();
+  // await clickInterestedCard();
+  await doClear();
   console.log("done");
 }
 

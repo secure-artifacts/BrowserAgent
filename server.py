@@ -16,7 +16,7 @@ class App:
     def __init__(self, root: tb.Window):
         self.root = root
         self.root.title("Browser Controller")
-        self.root.geometry("700x600")
+        self.root.geometry("700x700")
 
         self.loop = asyncio.new_event_loop()
         threading.Thread(target=self.loop.run_forever, daemon=True).start()
@@ -28,7 +28,7 @@ class App:
 
         self.build_ui()
         self.scan()
-        self.refresh()
+        self.loop.create_task(self.heartbeat())
 
     def build_ui(self):
         frm = tb.Frame(self.root)
@@ -37,22 +37,47 @@ class App:
         btnf = tb.Frame(frm)
         btnf.pack(fill="x", pady=5)
 
-        tb.Button(btnf, text="刷新", command=self.refresh).pack(side="left")
-        tb.Button(btnf, text="自动活跃", command=self.scroll).pack(side="left", padx=12)
-        tb.Button(btnf, text="停止活跃", command=self.stop_scroll).pack(side="left")
+        tb.Button(btnf, text="刷新", command=self.refresh).pack(side="left", padx=6)
+        tb.Button(btnf, text="自动活跃", command=self.scroll).pack(side="left", padx=6)
+        tb.Button(btnf, text="活跃Reels", command=self.auto_reels).pack(side="left", padx=6)
+        tb.Button(btnf, text="停止活跃", command=self.stop_scroll).pack(side="left", padx=6)
 
         frame = tb.Frame(frm)
         frame.pack(fill="both", expand=True, pady=5)
-        self.list_view = tb.Treeview(frame, columns=("state", "name"), show="headings", selectmode="extended")
+
+        self.list_view = tb.Treeview(
+            frame,
+            columns=("state", "name"),
+            show="headings",
+            selectmode="extended"
+        )
+
         self.list_view.heading("state", text="状态")
         self.list_view.heading("name", text="名字")
         self.list_view.column("state", width=150, anchor="center")
-        self.list_view.pack(fill="both", expand=True)
+
+        yscroll = tb.Scrollbar(frame, orient="vertical", command=self.list_view.yview)
+        self.list_view.configure(yscrollcommand=yscroll.set)
+
+        self.list_view.pack(side="left", fill="both", expand=True)
+        yscroll.pack(side="right", fill="y")
 
     def remove_client(self, client_id):
         self.clients.pop(client_id, None)
         self.ports.pop(client_id, None)
-        self.ports_name = {k: v for k, v in self.ports_name.items() if v != client_id}
+
+        self.ports_name = {
+            k: v for k, v in self.ports_name.items()
+            if v != client_id
+        }
+
+        self.root.after(0, lambda: self._remove_client_ui(client_id))
+
+    def _remove_client_ui(self, client_id):
+        for item in self.list_view.get_children():
+            if self.get_item_id(item) == client_id:
+                self.list_view.delete(item)
+                break
 
     def get_item_id(self, item):
         return self.ports_name.get(self.list_view.item(item, "values")[1])
@@ -77,18 +102,25 @@ class App:
                 break
 
     def refresh(self):
-        for item in self.list_view.get_children():
-            client_id = self.get_item_id(item)
-            conns = self.ports_name.get(self.get_item_name(item))
-            if not conns:
-                self.list_view.delete(item)
+        items = list(self.list_view.get_children())
+
+        dead_clients = []
+
+        for item in items:
+            name = self.get_item_name(item)
+            client_id = self.ports_name.get(name)
+
+            if not client_id or client_id not in self.clients:
+                dead_clients.append((item, client_id))
+
+        for item, client_id in dead_clients:
+            self.list_view.delete(item)
+            if client_id:
                 self.remove_client(client_id)
-        # self.root.after(5000, self.refresh)
+
 
     async def ws_handler(self, ws, port):
-
         client_id = None
-
         try:
             async for msg in ws:
                 data = json.loads(msg)
@@ -114,7 +146,8 @@ class App:
         except websockets.exceptions.InvalidMessage:
             print("收到非法 WebSocket 请求")
         finally:
-            pass
+            if client_id:
+                self.remove_client(client_id)
 
     async def start_server(self, port):
         if port in self.servers:
@@ -145,6 +178,14 @@ class App:
                     self.send(port,client_id,{"action":"scroll30"}),
                     self.loop
                 )
+    def auto_reels(self):
+        for client_id in self.selected_targets():
+            port = self.ports.get(client_id)
+            if port is not None:
+                asyncio.run_coroutine_threadsafe(
+                    self.send(port,client_id,{"action":"auto_reels"}),
+                    self.loop
+                )
     def stop_scroll(self):
         for client_id in self.selected_targets():
             port = self.ports.get(client_id)
@@ -153,6 +194,29 @@ class App:
                     self.send(port,client_id,{"action":"stop_scroll"}),
                     self.loop
                 )
+
+    # ===== 心跳协程 =====
+    async def heartbeat(self):
+        while True:
+            await asyncio.sleep(15)
+
+            dead = []
+
+            for client_id, ws in list(self.clients.items()):
+                try:
+                    pong = await ws.ping()
+                    await asyncio.wait_for(pong, timeout=5)
+                except:
+                    dead.append(client_id)
+
+            for client_id in dead:
+                self.remove_client(client_id)
+
+                for item in self.list_view.get_children():
+                    if self.get_item_id(item) == client_id:
+                        self.list_view.delete(item)
+                        break
+
 
 
 def main():

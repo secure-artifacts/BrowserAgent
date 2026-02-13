@@ -8,13 +8,39 @@ const PORTS=[
   8765,8766,8767,8768,8769
 ];
 
-async function openAndGetFBName() {
+async function open_url(url) {
   const [tab] = await chrome.tabs.query({active:true, currentWindow:true});
 
   await chrome.tabs.update(tab.id, {
-    url: "https://www.facebook.com/",
+    url: url,
     active: true
   });
+  return tab;
+}
+
+function openAndInject(url, file){
+  chrome.tabs.query({active:true,currentWindow:true}, ([tab])=>{
+    if(!tab) return;
+
+    chrome.tabs.update(tab.id,{url}, (updatedTab)=>{
+      const listener = (tabId, info)=>{
+        if(tabId === updatedTab.id && info.status === "complete"){
+          chrome.tabs.onUpdated.removeListener(listener);
+
+          chrome.scripting.executeScript({
+            target:{tabId:updatedTab.id},
+            files:[file]
+          });
+        }
+      };
+
+      chrome.tabs.onUpdated.addListener(listener);
+    });
+  });
+}
+
+async function openAndGetFBName() {
+  const tab = await open_url("https://www.facebook.com/");
 
   // 等页面加载
   await new Promise(resolve => {
@@ -130,24 +156,27 @@ function connect(i=0){
       ws.send(JSON.stringify({type:"status", status:"auto", client_id:clientId}));
       chrome.tabs.query({active:true,currentWindow:true},tabs=>{
         if(!tabs.length) return;
-
         chrome.scripting.executeScript({
           target:{tabId:tabs[0].id},
           files:["tools.js"]
         });
       });
     }
+    if (msg.action === "auto_reels") {
+      ws.send(JSON.stringify({type:"status", status:"auto", client_id:clientId}));
+      openAndInject("https://www.facebook.com/reel/", "auto_reels.js");
+    }
 
     if (msg.action === "stop_scroll") {
       ws.send(JSON.stringify({type:"status", status:"stop", client_id:clientId}));
       chrome.tabs.query({active:true,currentWindow:true},tabs=>{
         if(!tabs.length) return;
-
         chrome.scripting.executeScript({
           target:{tabId:tabs[0].id},
-          func: ()=>{
-            window.location.reload();
-          }
+          func: (url)=>{
+            window.location.href = url;
+          },
+          args:["https://www.facebook.com/"]
         });
       });
     }
@@ -200,6 +229,14 @@ chrome.runtime.onMessage.addListener((msg)=>{
     });
   }
 });
+
+chrome.runtime.onMessage.addListener((msg)=>{
+  if(msg.cmd==="auto_reels"){
+    openAndInject("https://www.facebook.com/reel/", "auto_reels.js");
+  }
+});
+
+
 // 监听URL参数自动触发
 chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
   if (info.status !== "complete" || !tab.url) return;
@@ -214,13 +251,10 @@ chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
         files:["tools.js"]
       });
     }
-
     //https://www.facebook.com/?fb_bridge_connect_extension
     if (tab.url.includes("facebook.com") && url.searchParams.has("fb_bridge_connect_extension")) {
-      // 自动连接WS（可选）
       connect();
     }
-
   } catch(e){}
 });
 

@@ -4,4 +4,7 @@ document.getElementById("btn").onclick=()=>{
 document.getElementById("btn2").onclick=()=>{
   chrome.runtime.sendMessage({cmd:"auto_active"});
 };
+document.getElementById("btn3").onclick=()=>{
+  chrome.runtime.sendMessage({cmd:"auto_reels"});
+};
 
