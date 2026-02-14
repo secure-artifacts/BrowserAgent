@@ -12,6 +12,22 @@ import websockets
 
 PORT_RANGE = range(8765, 8769)
 
+# 防止系统进入睡眠
+import ctypes, atexit
+
+ES_CONTINUOUS = 0x80000000
+ES_SYSTEM_REQUIRED = 0x00000001
+ES_DISPLAY_REQUIRED = 0x00000002
+
+ctypes.windll.kernel32.SetThreadExecutionState(
+    ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED
+)
+
+atexit.register(
+    lambda: ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
+)
+
+
 class App:
     def __init__(self, root: tb.Window):
         self.root = root
