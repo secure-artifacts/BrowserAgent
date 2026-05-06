@@ -1,12 +1,18 @@
 {
   "manifest_version": 3,
-  "name": "WS Browser Bridge",
-  "version": "1.1",
+  "name": "FB Browser Bridge",
+  "version": "1.2",
   "permissions": [
     "tabs",
-    "scripting"
+    "scripting",
+    "storage",
+    "unlimitedStorage",
+    "alarms" 
   ],
-  "host_permissions": ["<all_urls>"],
+  "host_permissions": [
+    "https://*.facebook.com/*",
+    "http://127.0.0.1/*"
+  ],
   "background": {
     "service_worker": "bg.js",
     "type": "module"

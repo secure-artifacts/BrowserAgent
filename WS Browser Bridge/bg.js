@@ -1,7 +1,6 @@
 // bg.js
 
 let ws=null;
-let hbTimer = null;
 const clientId = crypto.randomUUID();
 
 const PORTS=[
@@ -101,13 +100,16 @@ async function openAndGetFBName() {
 }
 
 function connect(i=0){
-  // ✅ 先关闭旧连接
+  if(ws && ws.readyState===WebSocket.OPEN){
+    return;
+  }
   if(ws){
+    if(ws.readyState === WebSocket.CONNECTING){
+      return;
+    }
     try{ ws.close(); }catch{}
     ws = null;
   }
-
-  if(ws && ws.readyState===1) return;
 
   if(i>=PORTS.length){
     return;
@@ -116,7 +118,7 @@ function connect(i=0){
   try {
     ws=new WebSocket(`ws://127.0.0.1:${PORTS[i]}`);
   } catch(e){
-    setTimeout(()=>connect(i+1),2000);
+    setTimeout(()=>connect(i+1),1000);
     return;
   }
 
@@ -128,11 +130,6 @@ function connect(i=0){
         fb_name: name
       }));
     }).catch(()=>{});
-    hbTimer=setInterval(()=>{
-      if(ws.readyState===1){
-        ws.send(JSON.stringify({type:"ping", client_id:clientId}));
-      }
-    },5000);
   };
 
   ws.onmessage=e=>{
@@ -185,7 +182,6 @@ function connect(i=0){
 
   ws.onclose=()=>{
     // 停止页面滚动
-    clearInterval(hbTimer);
     chrome.tabs.query({},tabs=>{
       for(const t of tabs){
         chrome.scripting.executeScript({
@@ -209,7 +205,7 @@ function connect(i=0){
   };
 }
 
-// connect();
+connect();
 
 chrome.runtime.onMessage.addListener((msg)=>{
   if(msg.cmd==="connect_py"){
@@ -254,6 +250,12 @@ chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
     //https://www.facebook.com/?fb_bridge_connect_extension
     if (tab.url.includes("facebook.com") && url.searchParams.has("fb_bridge_connect_extension")) {
       connect();
+    }
+    if (tab.url.includes("facebook.com")) {
+      // 每次访问facebook都尝试连接一次（如果未连接）
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        connect();
+      }
     }
   } catch(e){}
 });

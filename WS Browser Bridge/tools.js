@@ -227,7 +227,7 @@ async function doComment(){
 
 
 async function doClear(){
-  const keywords = ["离开页面","離開頁面","退出頁面","Leave",
+  const keywords = ["离开页面","離開頁面","退出頁面","Leave", "關閉", "关闭",
     "關閉聊天室",
     "关闭聊天",
     "關閉聊天",

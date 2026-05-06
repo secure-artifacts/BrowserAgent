@@ -10,7 +10,7 @@ import ttkbootstrap as tb
 from ttkbootstrap.constants import *
 import websockets
 
-PORT_RANGE = range(8765, 8769)
+PORT_RANGE = range(8765, 8770)
 
 # 防止系统进入睡眠
 import ctypes, atexit
@@ -44,7 +44,6 @@ class App:
 
         self.build_ui()
         self.scan()
-        self.loop.create_task(self.heartbeat())
 
     def build_ui(self):
         frm = tb.Frame(self.root)
@@ -79,14 +78,18 @@ class App:
         yscroll.pack(side="right", fill="y")
 
     def remove_client(self, client_id):
+        name = None
+        # 反向查找 name
+        for k, v in list(self.ports_name.items()):
+            if v == client_id:
+                name = k
+                del self.ports_name[k]
+                break
+        
         self.clients.pop(client_id, None)
         self.ports.pop(client_id, None)
 
-        self.ports_name = {
-            k: v for k, v in self.ports_name.items()
-            if v != client_id
-        }
-
+        # 切换到主线程更新UI
         self.root.after(0, lambda: self._remove_client_ui(client_id))
 
     def _remove_client_ui(self, client_id):
@@ -158,36 +161,50 @@ class App:
             async for msg in ws:
                 data = json.loads(msg)
 
-                client_id = data.get("client_id", "")
+                # 2. 处理初始化 (自动添加)
                 if data.get("type") == "init":
-                    name = data.get("fb_name","")
-                    if not client_id:
-                        continue
+                    client_id = data.get("client_id", "")
+                    name = data.get("fb_name", "未知用户")
+                    if not client_id: continue
+
+                    # 先清理同名旧连接，防止 UI 重复
                     self.delete_by_name(name)
+
+                    # 登记数据
                     self.clients[client_id] = ws
-                    self.list_view.insert("", "end", values=("空闲", name))
                     self.ports_name[name] = client_id
                     self.ports[client_id] = port
 
-                if data.get("type") == "status":
-                    if data.get("status") == "auto":
-                        self.set_status(client_id,"活跃中")
+                    # 关键：使用 after 确保在 Tkinter 主线程更新 UI
+                    self.root.after(0, lambda n=name: self.list_view.insert("", "end", values=("空闲", n)))
+                    print(f"浏览器已连接: {name} (ID: {client_id})")
 
-                    if data.get("status") == "stop":
-                        self.set_status(client_id,"空闲")
-        except websockets.exceptions.ConnectionClosedError:
-            print("客户端断开连接")
-        except websockets.exceptions.InvalidMessage:
-            print("收到非法 WebSocket 请求")
+                # 3. 处理状态更新
+                elif data.get("type") == "status":
+                    status_map = {"auto": "活跃中", "stop": "空闲"}
+                    new_status = status_map.get(data.get("status"))
+                    if new_status and client_id:
+                        self.root.after(0, lambda c=client_id, s=new_status: self.set_status(c, s))
+
+        except Exception as e:
+            print(f"连接异常: {e}")
         finally:
+            # 4. 自动删除：连接断开时触发
             if client_id:
+                print(f"正在移除客户端: {client_id}")
                 self.remove_client(client_id)
 
     async def start_server(self, port):
         if port in self.servers:
             return
         try:
-            server = await websockets.serve(lambda ws: self.ws_handler(ws, port), "127.0.0.1", port)
+            server = await websockets.serve(
+                lambda ws: self.ws_handler(ws, port),
+                "127.0.0.1",
+                port,
+                ping_interval=10,
+                ping_timeout=5
+            )
             self.servers[port] = server
         except Exception as e:
             print(f"启动端口 {port} 失败: {e}")
@@ -228,28 +245,6 @@ class App:
                     self.send(port,client_id,{"action":"stop_scroll"}),
                     self.loop
                 )
-
-    # ===== 心跳协程 =====
-    async def heartbeat(self):
-        while True:
-            await asyncio.sleep(15)
-
-            dead = []
-
-            for client_id, ws in list(self.clients.items()):
-                try:
-                    pong = await ws.ping()
-                    await asyncio.wait_for(pong, timeout=5)
-                except:
-                    dead.append(client_id)
-
-            for client_id in dead:
-                self.remove_client(client_id)
-
-                for item in self.list_view.get_children():
-                    if self.get_item_id(item) == client_id:
-                        self.list_view.delete(item)
-                        break
 
 
 def main():
