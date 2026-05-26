@@ -1,0 +1,65 @@
+name: Build Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  VERSION: v0.3
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PyInstaller
+        run: |
+          pip install -r requirements.txt
+
+      - name: Build EXE
+        run: |
+          pyinstaller server.py ^
+          --onefile ^
+          --noconsole ^
+          --clean ^
+          --name "FB自动活跃"
+
+      - name: Create Release Folder
+        shell: powershell
+        run: |
+          $releaseFolder = "FB自动活跃_${{ env.VERSION }}"
+
+          mkdir $releaseFolder
+
+          copy ".\dist\FB自动活跃.exe" "$releaseFolder\"
+
+          xcopy ".\WS Browser Bridge" "$releaseFolder\浏览器插件\" /E /I /Y
+
+      - name: Zip Release
+        shell: powershell
+        run: |
+          Compress-Archive `
+          -Path "FB自动活跃_${{ env.VERSION }}" `
+          -DestinationPath "FB自动活跃_${{ env.VERSION }}.zip"
+
+      - name: Create Tag
+        run: |
+          git tag ${{ env.VERSION }}
+          git push origin ${{ env.VERSION }}
+
+      - name: Upload Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.VERSION }}
+          files: |
+            FB自动活跃_${{ env.VERSION }}.zip
