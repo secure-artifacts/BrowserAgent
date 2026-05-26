@@ -32,7 +32,7 @@ jobs:
           --onefile `
           --noconsole `
           --clean `
-          --name "FB自动活跃"
+          --name "FB_server"
 
       - name: Create Release Folder
         shell: powershell
@@ -41,7 +41,7 @@ jobs:
 
           mkdir $releaseFolder
 
-          copy ".\dist\FB自动活跃.exe" "$releaseFolder\"
+          copy ".\dist\FB_server.exe" "$releaseFolder\"
 
           xcopy ".\WS Browser Bridge" "$releaseFolder\浏览器插件\" /E /I /Y
 
