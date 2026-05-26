@@ -22,17 +22,19 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install PyInstaller
+      - name: Install Dependencies
+        shell: powershell
         run: |
           pip install -r requirements.txt
 
       - name: Build EXE
+        shell: powershell
         run: |
           pyinstaller server.py `
-          --onefile `
-          --noconsole `
-          --clean `
-          --name "FB_server"
+            --onefile `
+            --noconsole `
+            --clean `
+            --name "FB_server"
 
       - name: Create Release Folder
         shell: powershell
@@ -52,8 +54,12 @@ jobs:
           -Path "FB自动活跃_${{ env.VERSION }}" `
           -DestinationPath "FB自动活跃_${{ env.VERSION }}.zip"
 
-      - name: Create Tag
+      - name: Recreate Tag
+        shell: powershell
         run: |
+          git tag -d ${{ env.VERSION }} 2>$null
+          git push origin :refs/tags/${{ env.VERSION }} 2>$null
+
           git tag ${{ env.VERSION }}
           git push origin ${{ env.VERSION }}
 
