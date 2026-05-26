@@ -4,7 +4,9 @@ on:
   workflow_dispatch:
 
 permissions:
+  id-token: write
   contents: write
+  attestations: write
 
 env:
   VERSION: v0.4
@@ -79,3 +81,7 @@ jobs:
           overwrite_files: true
           files: |
             FB_Auto_Active_${{ env.VERSION }}.zip
+      - name: Attest Build Provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: FB_Auto_Active_${{ env.VERSION }}.zip
