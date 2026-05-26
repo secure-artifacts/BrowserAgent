@@ -7,7 +7,7 @@ permissions:
   contents: write
 
 env:
-  VERSION: v0.3
+  VERSION: v0.4
 
 jobs:
   build:
@@ -65,13 +65,6 @@ jobs:
           Compress-Archive `
             -Path "FB_Auto_Active_${{ env.VERSION }}" `
             -DestinationPath $zipFile
-
-      - name: Delete Old Tag
-        shell: powershell
-        continue-on-error: true
-        run: |
-          git tag -d ${{ env.VERSION }}
-          git push origin ":refs/tags/${{ env.VERSION }}"
 
       - name: Create Tag
         shell: powershell
