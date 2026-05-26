@@ -28,10 +28,10 @@ jobs:
 
       - name: Build EXE
         run: |
-          pyinstaller server.py ^
-          --onefile ^
-          --noconsole ^
-          --clean ^
+          pyinstaller server.py `
+          --onefile `
+          --noconsole `
+          --clean `
           --name "FB自动活跃"
 
       - name: Create Release Folder
