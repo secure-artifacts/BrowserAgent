@@ -41,7 +41,7 @@ jobs:
       - name: Create Release Folder
         shell: powershell
         run: |
-          $releaseFolder = "FB自动活跃_${{ env.VERSION }}"
+          $releaseFolder = "FB_Auto_Active_${{ env.VERSION }}"
 
           if (Test-Path $releaseFolder) {
             Remove-Item $releaseFolder -Recurse -Force
@@ -51,19 +51,19 @@ jobs:
 
           Copy-Item ".\dist\FB_server.exe" "$releaseFolder\"
 
-          xcopy ".\WS Browser Bridge" "$releaseFolder\浏览器插件\" /E /I /Y
+          xcopy ".\WS Browser Bridge" "$releaseFolder\Browser_Extension\" /E /I /Y
 
       - name: Zip Release
         shell: powershell
         run: |
-          $zipFile = "FB自动活跃_${{ env.VERSION }}.zip"
+          $zipFile = "FB_Auto_Active_${{ env.VERSION }}.zip"
 
           if (Test-Path $zipFile) {
             Remove-Item $zipFile -Force
           }
 
           Compress-Archive `
-            -Path "FB自动活跃_${{ env.VERSION }}" `
+            -Path "FB_Auto_Active_${{ env.VERSION }}" `
             -DestinationPath $zipFile
 
       - name: Delete Old Tag
@@ -83,5 +83,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION }}
+          overwrite_files: true
           files: |
-            FB自动活跃_${{ env.VERSION }}.zip
+            FB_Auto_Active_${{ env.VERSION }}.zip
