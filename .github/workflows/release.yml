@@ -1,0 +1,88 @@
+name: Build Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  VERSION: v0.3
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Dependencies
+        shell: powershell
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build EXE
+        shell: powershell
+        run: |
+          pyinstaller server.py `
+            --onefile `
+            --noconsole `
+            --clean `
+            --name "FB_server"
+
+      - name: Create Release Folder
+        shell: powershell
+        run: |
+          $releaseFolder = "FB_Auto_Active_${{ env.VERSION }}"
+
+          if (Test-Path $releaseFolder) {
+            Remove-Item $releaseFolder -Recurse -Force
+          }
+
+          New-Item -ItemType Directory -Path $releaseFolder
+
+          Copy-Item ".\dist\FB_server.exe" "$releaseFolder\"
+
+          xcopy ".\WS Browser Bridge" "$releaseFolder\Browser_Extension\" /E /I /Y
+
+      - name: Zip Release
+        shell: powershell
+        run: |
+          $zipFile = "FB_Auto_Active_${{ env.VERSION }}.zip"
+
+          if (Test-Path $zipFile) {
+            Remove-Item $zipFile -Force
+          }
+
+          Compress-Archive `
+            -Path "FB_Auto_Active_${{ env.VERSION }}" `
+            -DestinationPath $zipFile
+
+      - name: Delete Old Tag
+        shell: powershell
+        continue-on-error: true
+        run: |
+          git tag -d ${{ env.VERSION }}
+          git push origin ":refs/tags/${{ env.VERSION }}"
+
+      - name: Create Tag
+        shell: powershell
+        run: |
+          git tag ${{ env.VERSION }}
+          git push origin ${{ env.VERSION }}
+
+      - name: Upload Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.VERSION }}
+          overwrite_files: true
+          files: |
+            FB_Auto_Active_${{ env.VERSION }}.zip
