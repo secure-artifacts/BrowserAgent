@@ -25,7 +25,9 @@ jobs:
       - name: Install Dependencies
         shell: powershell
         run: |
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install pyinstaller
 
       - name: Build EXE
         shell: powershell
@@ -41,25 +43,39 @@ jobs:
         run: |
           $releaseFolder = "FB自动活跃_${{ env.VERSION }}"
 
-          mkdir $releaseFolder
+          if (Test-Path $releaseFolder) {
+            Remove-Item $releaseFolder -Recurse -Force
+          }
 
-          copy ".\dist\FB_server.exe" "$releaseFolder\"
+          New-Item -ItemType Directory -Path $releaseFolder
+
+          Copy-Item ".\dist\FB_server.exe" "$releaseFolder\"
 
           xcopy ".\WS Browser Bridge" "$releaseFolder\浏览器插件\" /E /I /Y
 
       - name: Zip Release
         shell: powershell
         run: |
-          Compress-Archive `
-          -Path "FB自动活跃_${{ env.VERSION }}" `
-          -DestinationPath "FB自动活跃_${{ env.VERSION }}.zip"
+          $zipFile = "FB自动活跃_${{ env.VERSION }}.zip"
 
-      - name: Recreate Tag
+          if (Test-Path $zipFile) {
+            Remove-Item $zipFile -Force
+          }
+
+          Compress-Archive `
+            -Path "FB自动活跃_${{ env.VERSION }}" `
+            -DestinationPath $zipFile
+
+      - name: Delete Old Tag
+        shell: powershell
+        continue-on-error: true
+        run: |
+          git tag -d ${{ env.VERSION }}
+          git push origin ":refs/tags/${{ env.VERSION }}"
+
+      - name: Create Tag
         shell: powershell
         run: |
-          git tag -d ${{ env.VERSION }} 2>$null
-          git push origin :refs/tags/${{ env.VERSION }} 2>$null
-
           git tag ${{ env.VERSION }}
           git push origin ${{ env.VERSION }}
 
