@@ -1,19 +1,21 @@
 name: Build Release
 
 on:
-  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
 
 permissions:
   id-token: write
   contents: write
   attestations: write
 
-env:
-  VERSION: v0.4
-
 jobs:
   build:
     runs-on: windows-latest
+
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout
@@ -43,7 +45,7 @@ jobs:
       - name: Create Release Folder
         shell: powershell
         run: |
-          $releaseFolder = "FB_Auto_Active_${{ env.VERSION }}"
+          $releaseFolder = "FB_Auto_Active_${{ github.ref_name }}"
 
           if (Test-Path $releaseFolder) {
             Remove-Item $releaseFolder -Recurse -Force
@@ -58,30 +60,24 @@ jobs:
       - name: Zip Release
         shell: powershell
         run: |
-          $zipFile = "FB_Auto_Active_${{ env.VERSION }}.zip"
+          $zipFile = "FB_Auto_Active_${{ github.ref_name }}.zip"
 
           if (Test-Path $zipFile) {
             Remove-Item $zipFile -Force
           }
 
           Compress-Archive `
-            -Path "FB_Auto_Active_${{ env.VERSION }}" `
+            -Path "FB_Auto_Active_${{ github.ref_name }}" `
             -DestinationPath $zipFile
 
-      - name: Create Tag
-        shell: powershell
-        run: |
-          git tag ${{ env.VERSION }}
-          git push origin ${{ env.VERSION }}
+      - name: Generate Build Attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: "FB_Auto_Active_${{ github.ref_name }}.zip"
 
       - name: Upload Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.VERSION }}
-          overwrite_files: true
+          tag_name: ${{ github.ref_name }}
           files: |
-            FB_Auto_Active_${{ env.VERSION }}.zip
-      - name: Attest Build Provenance
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-path: FB_Auto_Active_${{ env.VERSION }}.zip
+            FB_Auto_Active_${{ github.ref_name }}.zip
