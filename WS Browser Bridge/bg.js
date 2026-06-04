@@ -150,7 +150,7 @@ function connect(i=0){
       });
     }
     if (msg.action === "scroll30") {
-      ws.send(JSON.stringify({type:"status", status:"auto", client_id:clientId}));
+      ws.send(JSON.stringify({type:"status", status:"auto_main_page", client_id:clientId}));
       chrome.tabs.query({active:true,currentWindow:true},tabs=>{
         if(!tabs.length) return;
         chrome.scripting.executeScript({
@@ -160,8 +160,12 @@ function connect(i=0){
       });
     }
     if (msg.action === "auto_reels") {
-      ws.send(JSON.stringify({type:"status", status:"auto", client_id:clientId}));
+      ws.send(JSON.stringify({type:"status", status:"auto_reels", client_id:clientId}));
       openAndInject("https://www.facebook.com/reel/", "auto_reels.js");
+    }
+    if (msg.action === "auto_group") {
+      ws.send(JSON.stringify({type:"status", status:"auto_group", client_id:clientId}));
+      openAndInject("https://www.facebook.com/groups/feed/", "tools.js");
     }
 
     if (msg.action === "stop_scroll") {
@@ -211,10 +215,7 @@ chrome.runtime.onMessage.addListener((msg)=>{
   if(msg.cmd==="connect_py"){
     connect();
   }
-});
-
-chrome.runtime.onMessage.addListener((msg)=>{
-  if(msg.cmd==="auto_active"){
+  else if(msg.cmd==="auto_active"){
     chrome.tabs.query({active:true,currentWindow:true},tabs=>{
       if(!tabs.length) return;
 
@@ -224,11 +225,11 @@ chrome.runtime.onMessage.addListener((msg)=>{
       });
     });
   }
-});
-
-chrome.runtime.onMessage.addListener((msg)=>{
-  if(msg.cmd==="auto_reels"){
+  else if(msg.cmd==="auto_reels"){
     openAndInject("https://www.facebook.com/reel/", "auto_reels.js");
+  }
+  else if(msg.cmd==="auto_group"){
+    openAndInject("https://www.facebook.com/groups/feed/", "tools.js");
   }
 });
 

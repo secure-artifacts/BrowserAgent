@@ -109,7 +109,12 @@ async function autoReels(){
         await sleep(rand(2000,15000));
     // await maybeLike();
 
-    if(Math.random()<0.1){
+    if(Math.random()<0.03){
+      location.reload();
+      return;
+    }
+
+    if(Math.random()<0.05){
       prevReel();
     }else{
       nextReel();

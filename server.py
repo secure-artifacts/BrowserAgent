@@ -55,6 +55,7 @@ class App:
         tb.Button(btnf, text="刷新", command=self.refresh).pack(side="left", padx=6)
         tb.Button(btnf, text="自动活跃", command=self.scroll).pack(side="left", padx=6)
         tb.Button(btnf, text="活跃Reels", command=self.auto_reels).pack(side="left", padx=6)
+        tb.Button(btnf, text="活跃小组", command=self.auto_group).pack(side="left", padx=6)
         tb.Button(btnf, text="停止活跃", command=self.stop_scroll).pack(side="left", padx=6)
 
         frame = tb.Frame(frm)
@@ -181,7 +182,7 @@ class App:
 
                 # 3. 处理状态更新
                 elif data.get("type") == "status":
-                    status_map = {"auto": "活跃中", "stop": "空闲"}
+                    status_map = {"auto_main_page": "活跃首页", "auto_reels": "活跃Reels", "auto_group": "活跃小组", "stop": "空闲"}
                     new_status = status_map.get(data.get("status"))
                     if new_status and client_id:
                         self.root.after(0, lambda c=client_id, s=new_status: self.set_status(c, s))
@@ -235,6 +236,14 @@ class App:
             if port is not None:
                 asyncio.run_coroutine_threadsafe(
                     self.send(port,client_id,{"action":"auto_reels"}),
+                    self.loop
+                )
+    def auto_group(self):
+        for client_id in self.selected_targets():
+            port = self.ports.get(client_id)
+            if port is not None:
+                asyncio.run_coroutine_threadsafe(
+                    self.send(port,client_id,{"action":"auto_group"}),
                     self.loop
                 )
     def stop_scroll(self):

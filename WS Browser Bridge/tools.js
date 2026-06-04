@@ -498,7 +498,7 @@ function humanLikeScroll() {
 
     let dy = rand(80, 800);
 
-    if (Math.random() < 0.15) dy *= -1;
+    if (Math.random() < 0.05) dy *= -1;
     if (atBottom) dy = -rand(300, 900);
 
     smooth(dy, async () => {
