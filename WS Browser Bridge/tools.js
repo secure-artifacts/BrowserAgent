@@ -225,6 +225,146 @@ async function doComment(){
   return false;
 }
 
+// ===== Notifications =====
+async function openNotificationsAndScroll() {
+    console.log("打开通知窗口...");
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    const rand = (min, max) =>
+        Math.floor(Math.random() * (max - min + 1)) + min;
+
+    function isVisible(el) {
+        if (!el) return false;
+
+        const r = el.getBoundingClientRect();
+
+        return (
+            r.width > 0 &&
+            r.height > 0 &&
+            r.bottom > 0 &&
+            r.right > 0 &&
+            r.top < window.innerHeight &&
+            r.left < window.innerWidth
+        );
+    }
+
+    function findNotificationButton() {
+        const keywords = [
+            '通知',
+            'Notifications',
+            'Notification'
+        ];
+
+        // 优先 aria-label
+        const byLabel = [...document.querySelectorAll('[role="button"]')]
+            .find(el => {
+                const label = el.getAttribute('aria-label') || '';
+                return keywords.some(k => label.startsWith(k));
+            });
+
+        if (byLabel && isVisible(byLabel)) {
+            return byLabel;
+        }
+
+        // 备用：铃铛 SVG
+        const buttons = document.querySelectorAll(
+            'div[role="button"][aria-haspopup="dialog"]'
+        );
+
+        for (const btn of buttons) {
+            if (!isVisible(btn)) continue;
+
+            const path = btn.querySelector('svg path');
+            if (!path) continue;
+
+            const d = path.getAttribute('d') || '';
+
+            if (
+                d.includes('M3 9.5a9 9') &&
+                d.includes('18 0') &&
+                d.includes('4.5')
+            ) {
+                return btn;
+            }
+        }
+
+        return null;
+    }
+
+    function findScrollableContainer() {
+        const dialogs = [
+            ...document.querySelectorAll('[role="dialog"][aria-label]')
+        ].filter(el => {
+            const label = el.getAttribute('aria-label') || '';
+            return /notification/i.test(label) || label.includes('通知');
+        });
+
+        for (const dialog of dialogs) {
+            const nodes = dialog.querySelectorAll('*');
+
+            for (const el of nodes) {
+                const style = getComputedStyle(el);
+
+                if (
+                    el.scrollHeight > el.clientHeight + 100 &&
+                    style.overflowY !== 'hidden' &&
+                    (style.overflowY === 'auto' || style.overflowY === 'scroll')
+                ) {
+                    return el;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    // 点击通知按钮
+    const btn = findNotificationButton();
+
+    if (!btn) {
+        console.log('未找到通知按钮');
+        return false;
+    }
+
+    btn.click();
+
+    await sleep(rand(3500, 5500));
+
+    // 找通知面板滚动区域
+    const container = findScrollableContainer();
+
+    if (!container) {
+        console.log('未找到通知滚动区域');
+        return true;
+    }
+
+    // 随机滑动 2~6 次
+    const count = rand(2, 6);
+
+    for (let i = 0; i < count; i++) {
+
+        const distance = rand(250, 600);
+
+        container.scrollBy({
+            top: distance,
+            behavior: 'smooth'
+        });
+
+        await sleep(rand(1000, 2500));
+
+        // 10%概率往回滑一点
+        if (Math.random() < 0.1) {
+            container.scrollBy({
+                top: -rand(100, 400),
+                behavior: 'smooth'
+            });
+
+            await sleep(rand(800, 1800));
+        }
+    }
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    console.log(`通知面板已浏览 ${count} 次`);
+    return true;
+}
 
 async function doClear(){
   const keywords = ["离开页面","離開頁面","退出頁面","Leave", "關閉", "关闭",
@@ -257,15 +397,18 @@ async function randomInteract(){
   if(Math.random()>0.618)
     return;
 
-  if(Math.random()<0.1) {
+  if(Math.random()<0.2) {
+    await openNotificationsAndScroll();
+  }
+  if(Math.random()<0.05) {
     await doLike();
     await sleep(rand(2500, 8000)); // 分享后停顿
   }
-  if(Math.random()<0.1) {
+  if(Math.random()<0.05) {
     await shareToStory();
     await sleep(rand(2500, 8000)); // 分享后停顿
   }
-  if(Math.random()<0.1) {
+  if(Math.random()<0.05) {
     await doComment();
     await sleep(rand(2500, 8000)); // 分享后停顿
   }
@@ -301,6 +444,15 @@ function humanLikeScroll() {
   };
 
   window.__hsCtrl = ctrl;
+
+  // 5-15分钟后停止活跃
+  const stopAfter = rand(
+    5 * 60 * 1000,
+    15 * 60 * 1000
+  );
+  setTimeout(() => {
+    location.reload();
+  }, stopAfter);
 
   function smooth(dy, done) {
     const startY = window.scrollY;
