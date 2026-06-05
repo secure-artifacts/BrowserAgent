@@ -366,6 +366,32 @@ async function openNotificationsAndScroll() {
     return true;
 }
 
+// ===== 加入小组 =====
+async function clickJoinButton() {
+  console.log("点击加入小组...");
+  const keywords = ["加入", "Join"];
+
+  const buttons = [...document.querySelectorAll('[role="button"]')];
+
+  for (const btn of buttons) {
+    if (!isVisible(btn)) continue;
+
+    const text =
+      (btn.innerText || "").trim() ||
+      (btn.getAttribute("aria-label") || "").trim();
+
+    if (keywords.some(k => text.includes(k))) {
+      humanClick(btn);
+      console.log("已点击加入按钮:", text);
+      return true;
+    }
+  }
+
+  console.log("未找到加入按钮");
+  return false;
+}
+
+// ===== 清理界面上的弹窗 =====
 async function doClear(){
   const keywords = ["离开页面","離開頁面","退出頁面","Leave", "關閉", "关闭",
     "關閉聊天室",
@@ -391,18 +417,21 @@ async function doClear(){
 
 // ===== 随机互动 =====
 async function randomInteract(){
-  // 优先点击感兴趣卡片
-  await clickInterestedCard();
+  await doClear();  //清理弹窗
 
   if(Math.random()>0.618)
     return;
 
-  if(Math.random()<0.2) {
-    await openNotificationsAndScroll();
+  if(Math.random()<0.1) {
+    await clickInterestedCard(); // 点击感兴趣卡片
+    await clickJoinButton(); // 点击加入小组按钮
+  }
+  if(Math.random()<0.05) {
+    await openNotificationsAndScroll();  // 点开通知窗口
   }
   if(Math.random()<0.05) {
     await doLike();
-    await sleep(rand(2500, 8000)); // 分享后停顿
+    await sleep(rand(2500, 8000)); // 点赞后停顿
   }
   if(Math.random()<0.05) {
     await shareToStory();
@@ -410,10 +439,8 @@ async function randomInteract(){
   }
   if(Math.random()<0.05) {
     await doComment();
-    await sleep(rand(2500, 8000)); // 分享后停顿
+    await sleep(rand(2500, 8000)); // 评论后停顿
   }
-  // 最后清理弹窗
-  await doClear();
 }
 
 
@@ -511,7 +538,7 @@ function humanLikeScroll() {
 
       ctrl.scroll_count += 1;
       if (ctrl.scroll_count >= ctrl.stop_count) {
-        // 每滚动10次，长停一下
+        // 每滚动几十次，长停一下
         await sleep(rand(5000, 25000));
         ctrl.scroll_count = 0;
         ctrl.stop_count = rand(30, 100);
