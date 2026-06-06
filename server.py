@@ -3,12 +3,14 @@
 
 import asyncio
 import json
+import time
 import threading
 import tkinter as tk
 from tkinter import ttk
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
 import websockets
+import traceback
 
 PORT_RANGE = range(8765, 8770)
 
@@ -41,9 +43,11 @@ class App:
         self.clients = {}
         self.ports_name = {}
         self.ports = {}
+        self.last_seen = {}  # 心跳包
 
         self.build_ui()
         self.scan()
+        self.root.after(10000, self.check_alive)
 
     def build_ui(self):
         frm = tb.Frame(self.root)
@@ -165,6 +169,13 @@ class App:
             async for msg in ws:
                 data = json.loads(msg)
 
+                # 心跳包
+                if data.get("type") == "heartbeat":
+                    cid = data.get("client_id")
+                    if cid:
+                        self.last_seen[cid] = time.time()
+                    continue
+
                 # 2. 处理初始化 (自动添加)
                 if data.get("type") == "init":
                     client_id = data.get("client_id", "")
@@ -190,13 +201,16 @@ class App:
                     if new_status and client_id:
                         self.root.after(0, lambda c=client_id, s=new_status: self.set_status(c, s))
 
+        except websockets.ConnectionClosed as e:
+            print(f"连接关闭 code={e.code} reason={e.reason}")
         except Exception as e:
             print(f"连接异常: {e}")
+            traceback.print_exc()
         finally:
-            # 4. 自动删除：连接断开时触发
             if client_id:
-                print(f"正在移除客户端: {client_id}")
-                self.remove_client(client_id)
+                print("连接可能断开:", client_id)
+                # 标记为失联
+                self.last_seen[client_id] = 0
 
     async def start_server(self, port):
         if port in self.servers:
@@ -206,8 +220,8 @@ class App:
                 lambda ws: self.ws_handler(ws, port),
                 "127.0.0.1",
                 port,
-                ping_interval=10,
-                ping_timeout=5
+                ping_interval=20,
+                ping_timeout=60
             )
             self.servers[port] = server
         except Exception as e:
@@ -257,6 +271,21 @@ class App:
                     self.send(port,client_id,{"action":"stop_scroll"}),
                     self.loop
                 )
+
+    def check_alive(self):
+        now = time.time()
+        dead = []
+
+        for cid, t in list(self.last_seen.items()):
+            if now - t > 60:  # 60秒没心跳
+                dead.append(cid)
+
+        for cid in dead:
+            print("心跳超时删除:", cid)
+            self.remove_client(cid)
+            self.last_seen.pop(cid, None)
+
+        self.root.after(10000, self.check_alive)
 
 
 def main():

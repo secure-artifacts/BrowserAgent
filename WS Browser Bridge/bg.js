@@ -231,6 +231,11 @@ chrome.runtime.onMessage.addListener((msg)=>{
   else if(msg.cmd==="auto_group"){
     openAndInject("https://www.facebook.com/groups/feed/", "tools.js");
   }
+  else if(msg.cmd==="fb_bridge_active_stopped"){
+    if(ws && ws.readyState === WebSocket.OPEN){
+      ws.send(JSON.stringify({type:"status", status:"stop", client_id:clientId}));
+    }
+  }
 });
 
 
@@ -261,4 +266,14 @@ chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
   } catch(e){}
 });
 
+
+// 连接心跳
+setInterval(() => {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({
+      type: "heartbeat",
+      client_id: clientId
+    }));
+  }
+}, 15000);
 

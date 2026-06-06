@@ -478,6 +478,9 @@ function humanLikeScroll() {
     15 * 60 * 1000
   );
   setTimeout(() => {
+    chrome.runtime.sendMessage({
+      cmd: "fb_bridge_active_stopped"
+    });
     location.reload();
   }, stopAfter);
 
