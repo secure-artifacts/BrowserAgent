@@ -80,22 +80,25 @@ class App:
 
     def remove_client(self, client_id):
         name = None
-        # 反向查找 name
+        # 找到名字
         for k, v in list(self.ports_name.items()):
             if v == client_id:
                 name = k
-                del self.ports_name[k]
                 break
-        
+
+        # 删除数据
+        if name:
+            self.ports_name.pop(name, None)
+
         self.clients.pop(client_id, None)
         self.ports.pop(client_id, None)
 
-        # 切换到主线程更新UI
-        self.root.after(0, lambda: self._remove_client_ui(client_id))
+        # 用名字删UI
+        self.root.after(0, lambda n=name: self._remove_client_ui(n))
 
-    def _remove_client_ui(self, client_id):
+    def _remove_client_ui(self, name):
         for item in self.list_view.get_children():
-            if self.get_item_id(item) == client_id:
+            if self.get_item_name(item) == name:
                 self.list_view.delete(item)
                 break
 
