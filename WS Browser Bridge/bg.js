@@ -245,13 +245,15 @@ chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
 
   try {
     const url = new URL(tab.url);
-    //https://www.facebook.com/?fb_bridge_auto_extension
-    if (tab.url.includes("facebook.com") && url.searchParams.has("fb_bridge_auto_extension")) {
+    //只要带参数 fb_bridge_auto_extension，就执行，https://example.com/?fb_bridge_auto_extension
+    if (url.searchParams.has("fb_bridge_auto_extension")) {
       // 自动滚动
-      chrome.scripting.executeScript({
-        target: { tabId },
-        files:["tools.js"]
-      });
+      setTimeout(() => {
+        chrome.scripting.executeScript({
+          target: { tabId },
+          files: ["tools.js"]
+        });
+      }, 3000);
     }
     //https://www.facebook.com/?fb_bridge_connect_extension
     if (tab.url.includes("facebook.com") && url.searchParams.has("fb_bridge_connect_extension")) {
