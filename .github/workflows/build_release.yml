@@ -71,7 +71,7 @@ jobs:
             -DestinationPath $zipFile
 
       - name: Generate Build Attestation
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v3
         with:
           subject-path: "FB_Auto_Active_${{ github.ref_name }}.zip"
 
