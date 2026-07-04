@@ -167,6 +167,10 @@ function connect(i=0){
       ws.send(JSON.stringify({type:"status", status:"auto_group", client_id:clientId}));
       openAndInject("https://www.facebook.com/groups/feed/", "tools.js");
     }
+    if (msg.action === "cancel_friend_requests") {
+      ws.send(JSON.stringify({type:"status", status:"cancel_friend_requests", client_id:clientId}));
+      openAndInject("https://www.facebook.com/friends/requests", "cancel_friend_requests.js");
+    }
 
     if (msg.action === "stop_scroll") {
       ws.send(JSON.stringify({type:"status", status:"stop", client_id:clientId}));
@@ -235,6 +239,9 @@ chrome.runtime.onMessage.addListener((msg)=>{
     if(ws && ws.readyState === WebSocket.OPEN){
       ws.send(JSON.stringify({type:"status", status:"stop", client_id:clientId}));
     }
+  }
+  else if(msg.cmd==="cancel_friend_requests"){
+    openAndInject("https://www.facebook.com/friends/requests", "cancel_friend_requests.js");
   }
 });
 

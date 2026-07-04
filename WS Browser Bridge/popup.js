@@ -11,3 +11,7 @@ document.getElementById("btn3").onclick=()=>{
 document.getElementById("btn4").onclick=()=>{
   chrome.runtime.sendMessage({cmd:"auto_group"});
 };
+
+document.getElementById("btn5").onclick=()=>{
+  chrome.runtime.sendMessage({cmd:"cancel_friend_requests"});
+};
