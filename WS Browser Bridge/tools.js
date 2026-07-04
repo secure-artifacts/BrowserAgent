@@ -472,10 +472,10 @@ function humanLikeScroll() {
 
   window.__hsCtrl = ctrl;
 
-  // 5-15分钟后停止活跃
+  // 5-10分钟后停止活跃
   const stopAfter = rand(
     5 * 60 * 1000,
-    15 * 60 * 1000
+    10 * 60 * 1000
   );
   setTimeout(() => {
     chrome.runtime.sendMessage({

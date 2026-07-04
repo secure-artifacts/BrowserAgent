@@ -128,7 +128,7 @@ async function main() {
     let lastScrollHeight = scrollElement.scrollHeight;
 
     // 纯滚动阶段
-    const totalScroll = rand(15, 30);
+    const totalScroll = rand(20, 30);
     console.log(`开始 ${totalScroll} 次滚动`);
     for (let scrollCount = 1; scrollCount <= totalScroll; scrollCount++) {
         scrollElement.scrollTop = scrollElement.scrollHeight;
