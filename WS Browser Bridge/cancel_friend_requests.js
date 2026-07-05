@@ -32,7 +32,7 @@ async function waitFor(fn, timeout = 15000) {
 async function main() {
     // 【超级兼容池】同时放入繁体和简体的关键字，彻底解决多语言版本问题
     const keywords = ["取消邀請", "取消请求"];
-    const modalTitles = ["送出的邀請", "已傳送邀請", "发出的请求", "已发送的请求"];
+    const modalTitles = ["送出的邀請", "已傳送邀請", "查看送出的邀請", "发出的请求", "已发送的请求"];
 
     // 【核心修正：模糊核心词池】不管是“要求”还是“请求”，“再试一次”还是“重试”，只要包含核心词就干掉
     const blockKeywords = ["无法处理", "無法處理", "请重试", "請再試一次"];
@@ -258,6 +258,7 @@ async function auto() {
                 const t = el.innerText.trim();
                 return t.includes("查看已发送请求")
                     || t.includes("查看已傳送邀請")
+                    || t.includes("查看送出的邀請")
                     || t.includes("View sent requests")
                     || t.includes("Sent requests");
             });
