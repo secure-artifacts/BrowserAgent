@@ -426,10 +426,10 @@ async function randomInteract(){
     await clickInterestedCard(); // 点击感兴趣卡片
     await clickJoinButton(); // 点击加入小组按钮
   }
-  if(Math.random()<0.05) {
+  if(Math.random()<0.1) {
     await openNotificationsAndScroll();  // 点开通知窗口
   }
-  if(Math.random()<0.05) {
+  if(Math.random()<0.1) {
     await doLike();
     await sleep(rand(2500, 8000)); // 点赞后停顿
   }

@@ -33,7 +33,7 @@ atexit.register(
 class App:
     def __init__(self, root: tb.Window):
         self.root = root
-        self.root.title("FB账号活跃v0.6")
+        self.root.title("FB账号活跃")
         self.root.geometry("750x750")
 
         self.loop = asyncio.new_event_loop()
